@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#2c211a">
+<title>The Bhutanese Kitchen — 3D Prototype</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#17130f;color:#fff;font-family:system-ui,-apple-system,sans-serif;touch-action:none}
+#game{position:fixed;inset:0}canvas{display:block;width:100%;height:100%}
+#top{position:absolute;top:env(safe-area-inset-top,8px);left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.pill,.panel,button{background:#211a15eF;border:1px solid #9b754b;border-radius:12px;color:#fff;box-shadow:0 3px 12px #0005}
+.pill{padding:8px 12px;font-size:13px;font-weight:700}
+#help{position:absolute;left:10px;top:64px;max-width:210px;padding:10px;font-size:12px;line-height:1.45}
+#actions{position:absolute;right:12px;bottom:18px;display:flex;flex-direction:column;gap:8px}
+button{padding:11px 14px;font-size:14px;font-weight:700;touch-action:manipulation}
+#move{position:absolute;left:12px;bottom:15px;display:grid;grid-template-columns:48px 48px 48px;grid-template-rows:48px 48px;gap:5px}
+#move button{padding:0;font-size:20px;background:#211a15dd}
+#up{grid-column:2}#left{grid-column:1;grid-row:2}#down{grid-column:2;grid-row:2}#right{grid-column:3;grid-row:2}
+#notice{position:absolute;left:50%;bottom:135px;transform:translateX(-50%);width:min(88vw,420px);text-align:center;padding:10px 14px;background:#211a15ed;border:1px solid #a98253;border-radius:12px;font-size:13px}
+#modal{position:absolute;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:20px}
+#modal .panel{width:min(92vw,420px);padding:18px;line-height:1.5}
+#modal h2{margin:0 0 8px;color:#f3c78d}
+#modal p{font-size:14px}
+#modal button{margin-top:8px}
+@media(min-width:800px){#move{left:24px;bottom:24px}#actions{right:24px;bottom:24px}#notice{bottom:24px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<div id="game"></div>
+<div id="top"><div class="pill">🇧🇹 THE BHUTANESE KITCHEN</div><div class="pill" id="money">Nu. 500 · Day 1</div></div>
+<div id="help" class="panel">Move around your restaurant. Walk near a station and tap <b>INTERACT</b>. Drag on the scene to look around.</div>
+<div id="move">
+<button id="up" aria-label="Move forward">▲</button><button id="left" aria-label="Move left">◀</button><button id="down" aria-label="Move backward">▼</button><button id="right" aria-label="Move right">▶</button>
+</div>
+<div id="actions"><button id="camera">📷 3rd person</button><button id="interact">INTERACT</button><button id="recipe">📖 RECIPES</button></div>
+<div id="notice">Welcome, Chef! Your first customer is waiting.</div>
+<div id="modal"><div class="panel"><h2 id="modalTitle">Recipe book</h2><div id="modalText"></div><button id="close">CLOSE</button></div></div>
+<script type="module">
+import * as THREE from 'three';
+const host=document.querySelector('#game'),notice=document.querySelector('#notice');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9db4b4);scene.fog=new THREE.Fog(0x9db4b4,17,35);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,100);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'low-power'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;host.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffe8c7,0x51402e,2));
+const sun=new THREE.DirectionalLight(0xffe0b4,2.2);sun.position.set(-5,10,7);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const mat=(color,roughness=.8)=>new THREE.MeshStandardMaterial({color,roughness});
+const wood=mat(0x79502f),darkWood=mat(0x4b3020),wall=mat(0xd7c4a2),cream=mat(0xf0dfbd),red=mat(0x9c3f2e),gold=mat(0xc49a52),steel=mat(0x879397,.35),green=mat(0x496b43),white=mat(0xf3eee3);
+function box(w,h,d,m,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;scene.add(o);return o}
+box(20,.3,16,wood,0,-.2,0);
+box(20,5,.3,wall,0,2.3,-8);box(.3,5,16,wall,-10,2.3,0);box(.3,5,16,wall,10,2.3,0);
+box(20,.25,16,darkWood,0,5,0);
+// Bhutanese-inspired timber beams and wall panels
+for(let x=-8;x<=8;x+=4){box(.18,4.7,.2,darkWood,x,2.3,-7.78);box(.18,4.7,.2,darkWood,x,2.3,7.78)}
+box(20,.25,.3,red,0,4.65,-7.7);box(20,.25,.3,gold,0,4.35,-7.7);
+// window
+box(3.4,2.1,.18,darkWood,-6,2.8,-7.75);box(3,1.75,.1,mat(0x9dc8d5),-6,2.8,-7.62);box(.12,1.8,.12,red,-6,2.8,-7.5);box(3.1,.12,.12,red,-6,2.8,-7.5);
+// kitchen counters and stations
+const stations=[
+ {name:'PREP COUNTER',x:-5,z:-2,desc:'Preparation: wash and slice chillies and onions.'},
+ {name:'COOKING STOVE',x:0,z:-2,desc:'Cooking: simmer chillies with cheese until creamy.'},
+ {name:'SERVING COUNTER',x:5,z:-2,desc:'Serving: plate your Ema Datshi for the customer.'},
+ {name:'STORAGE',x:-7,z:4,desc:'Storage: chillies, cheese, rice, onions and spices.'}
+];
+for(const s of stations){box(2.7,1,1.5,wood,s.x,.5,s.z);box(2.8,.12,1.6,gold,s.x,1.06,s.z);box(.22,.5,.22,darkWood,s.x-1,.25,s.z-.5);box(.22,.5,.22,darkWood,s.x+1,.25,s.z+.5)}
+// stove rings and pot
+for(let i=0;i<2;i++){const ring=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.08,24),steel);ring.position.set(-.55+i*1.1,1.16,-2);scene.add(ring)}
+const pot=new THREE.Mesh(new THREE.CylinderGeometry(.43,.36,.48,24),steel);pot.position.set(0,1.48,-2);pot.castShadow=true;scene.add(pot);
+const potTop=new THREE.Mesh(new THREE.CylinderGeometry(.39,.39,.05,24),darkWood);potTop.position.set(0,1.74,-2);scene.add(potTop);
+// shelves and ingredients
+box(3,.15,.55,darkWood,-7,2.4,3);box(3,.15,.55,darkWood,-7,3.2,3);
+for(let i=0;i<4;i++){const jar=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.42,16),[red,green,gold,cream][i]);jar.position.set(-8+i*.65,2.7,3);scene.add(jar)}
+// dining table and chairs
+box(3,.18,2,wood,6,1,4);box(.18,1,.18,darkWood,5, .5,3.2);box(.18,1,.18,darkWood,7,.5,3.2);
+box(.18,.8,.18,darkWood,5,.4,4.8);box(.18,.8,.18,darkWood,7,.4,4.8);
+const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.42,.3,.16,24),red);bowl.position.set(6,1.18,4);scene.add(bowl);
+// chef character
+const chef=new THREE.Group();scene.add(chef);
+const body=new THREE.Mesh(new THREE.CapsuleGeometry(.38,.75,5,10),red);body.position.y=1.05;body.castShadow=true;chef.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.29,18,14),mat(0xd5a47d));head.position.y=1.82;chef.add(head);
+const hat=new THREE.Mesh(new THREE.CylinderGeometry(.38,.3,.22,20),white);hat.position.y=2.13;chef.add(hat);
+const legs=mat(0x34333a);for(let x of [-.2,.2]){const leg=new THREE.Mesh(new THREE.BoxGeometry(.17,.55,.2),legs);leg.position.set(x,.28,0);chef.add(leg)}
+chef.position.set(0,0,3.5);
+const customer=new THREE.Group();scene.add(customer);
+const cbody=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.65,4,9),green);cbody.position.y=.85;customer.add(cbody);
+const chead=new THREE.Mesh(new THREE.SphereGeometry(.25,16,12),mat(0xc9916c));chead.position.y=1.55;customer.add(chead);customer.position.set(7,0,5.6);
+let yaw=0,third=true,move={x:0,z:0},stage=0,money=500,drag=null;
+function updateCamera(){if(third){const offset=new THREE.Vector3(Math.sin(yaw)*7,5,Math.cos(yaw)*7);camera.position.copy(chef.position).add(offset);camera.lookAt(chef.position.x,1,chef.position.z)}else{camera.position.set(chef.position.x,1.65,chef.position.z);camera.rotation.set(0,yaw,0)}}
+updateCamera();
+function nearest(){let best=null,dist=999;for(const s of stations){const d=Math.hypot(chef.position.x-s.x,chef.position.z-s.z);if(d<dist){dist=d;best=s}}return dist<2.7?best:null}
+function interact(){const s=nearest();if(!s){notice.textContent='Move closer to a kitchen station first.';return}
+if(s.name==='PREP COUNTER'){stage=Math.max(stage,1);notice.textContent='Ingredients washed and sliced. Next: head to the stove.'}
+else if(s.name==='COOKING STOVE'){if(stage<1){notice.textContent='Prepare your ingredients first.';return}stage=2;notice.textContent='Ema Datshi is simmering. Stir gently until creamy.'}
+else if(s.name==='SERVING COUNTER'){if(stage<2){notice.textContent='Finish cooking before serving.';return}stage=3;money+=120;document.querySelector('#money').textContent='Nu. '+money+' · Day 1';customer.visible=false;notice.textContent='Order served! The customer loved your Ema Datshi. +Nu. 120'}
+else{notice.textContent='Storage: chillies, cheese, onions, oil, salt and red rice.'}
+}
+function showModal(title,html){document.querySelector('#modalTitle').textContent=title;document.querySelector('#modalText').innerHTML=html;document.querySelector('#modal').style.display='flex'}
+document.querySelector('#recipe').onclick=()=>showModal('Traditional recipe book','<b>Ema Datshi</b><p>Chillies · Datshi (cheese) · Onion · Oil · Water · Salt</p><p>Wash and slice the ingredients. Simmer the chillies with a little water, add cheese and cook gently until creamy. Serve hot.</p><hr><b>More recipes to unlock</b><p>Kewa Datshi · Momos · Phaksha Paa · Suja · Red Rice · Shakam Paa</p>');
+document.querySelector('#close').onclick=()=>document.querySelector('#modal').style.display='none';
+document.querySelector('#interact').onclick=interact;
+document.querySelector('#camera').onclick=()=>{third=!third;document.querySelector('#camera').textContent=third?'📷 3rd person':'📷 1st person';updateCamera()};
+const keyState={};addEventListener('keydown',e=>{keyState[e.key.toLowerCase()]=true});addEventListener('keyup',e=>{keyState[e.key.toLowerCase()]=false});
+const bind=(id,x,z)=>{const el=document.querySelector('#'+id);const start=e=>{e.preventDefault();move={x,z}};const stop=e=>{e.preventDefault();move={x:0,z:0}};el.addEventListener('pointerdown',start);['pointerup','pointercancel','pointerleave'].forEach(t=>el.addEventListener(t,stop))};
+bind('up',0,-1);bind('down',0,1);bind('left',-1,0);bind('right',1,0);
+renderer.domElement.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY}});
+renderer.domElement.addEventListener('pointermove',e=>{if(drag){yaw-=(e.clientX-drag.x)*.005;drag={x:e.clientX,y:e.clientY};if(!third)camera.rotation.y=yaw}});
+addEventListener('pointerup',()=>drag=null);
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);
+let mx=move.x+(keyState.a||keyState.arrowleft?-1:0)+(keyState.d||keyState.arrowright?1:0);
+let mz=move.z+(keyState.w||keyState.arrowup?-1:0)+(keyState.s||keyState.arrowdown?1:0);
+if(mx||mz){const v=new THREE.Vector3(mx,0,mz).normalize().multiplyScalar(3.2*dt);chef.position.x=THREE.MathUtils.clamp(chef.position.x+v.x,-8.5,8.5);chef.position.z=THREE.MathUtils.clamp(chef.position.z+v.z,-6.5,6.5);chef.rotation.y=Math.atan2(v.x,v.z)}
+if(third)updateCamera();renderer.render(scene,camera)}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6))});
+</script>
+</body></html>
